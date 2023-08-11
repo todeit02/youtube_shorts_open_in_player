@@ -9,8 +9,8 @@
 // @grant               GM_getResourceUrl
 // @include				/^https:\/\/(?:www\.)?youtube\.com\/shorts\/.*$/
 // @require				https://polyfill.io/v3/polyfill.min.js?features=Array.prototype.at
-// @resource            button http://127.0.0.1:5500/button.html
-// @resource            buttonStyles http://127.0.0.1:5500/button.css
+// @resource            button button.html
+// @resource            buttonStyles button.css
 // @run-at              document-end
 // @connect				*
 // ==/UserScript==
