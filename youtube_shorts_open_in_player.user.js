@@ -1,14 +1,13 @@
 // ==UserScript==
 // @name                youtube-shorts-open-in-player
-// @version				0.0.1
+// @version				0.1.0
 // @namespace	        https://github.com/todeit02/youtube_shorts_open_in_player
 // @description	        Adds a "watch" button to YouTube shorts for opening them as a regular YouTube video.
 // @grant				GM.xmlHttpRequest
 // @grant				GM_xmlhttpRequest
 // @grant               GM.getResourceUrl
 // @grant               GM_getResourceUrl
-// @include				/^https:\/\/(?:www\.)?youtube\.com\/shorts\/.*$/
-// @require				https://cdn.jsdelivr.net/npm/array.prototype.at@1.1.1
+// @include				/^https:\/\/(?:www\.)?youtube\.com\/.*$/
 // @resource            button https://raw.githubusercontent.com/todeit02/youtube_shorts_open_in_player/master/button.html
 // @resource            buttonStyles https://raw.githubusercontent.com/todeit02/youtube_shorts_open_in_player/master/button.css
 // @run-at              document-end
@@ -18,26 +17,59 @@
 
 "use strict";
 
+
 (async () =>
 {
-    const watchButtonStylesheetUrlPromise = GM.getResourceUrl("buttonStyles");
+    let locationObserver = null;
+
+    window.addEventListener("DOMContentLoaded", async () =>
+    {
+        // Using custom observer because popstate does not fire.
+        locationObserver = LocationChangeObserver(async location =>
+        {
+            const actionsBar = findCurrentActionsBar(location);
+            if(!actionsBar.querySelector(".userscript-watch-button")) insertWatchButtonIntoActionsBar(actionsBar);
+        });
+    
+        let shortsContainerWasDisplayedBefore = false;
+    
+        let shortsContainer = null;
+        const documentObserver = new MutationObserver(() =>
+        {
+            if(!shortsContainer) shortsContainer = document.querySelector("ytd-shorts");
+            if(!shortsContainer) return;
+    
+            const shortsContainerIsDisplayed = (window.getComputedStyle(shortsContainer).display !== "none");
+            if(shortsContainerIsDisplayed !== shortsContainerWasDisplayedBefore)
+            {
+                if(shortsContainerIsDisplayed) handleShortsContainerBecameDisplayed();
+                else handleShortsContainerBecameHidden();
+                shortsContainerWasDisplayedBefore = shortsContainerIsDisplayed;
+            }
+        });
+        documentObserver.observe(window.document.body, { childList: true, subtree: true });
+    });
+
     const watchButtonContainerTemplatePromise = loadWatchButtonContainerTemplate();
-
-    const shareButtonContainer = await waitForShareButtonContainer();
-
-    const watchButtonStylesheetUrl = await watchButtonStylesheetUrlPromise;
+    
+    const watchButtonStylesheetUrl = await GM.getResourceUrl("buttonStyles");
     insertWatchButtonStylesheet(watchButtonStylesheetUrl);
 
-    const watchButtonContainerTemplate = await watchButtonContainerTemplatePromise;
-    insertWatchButton(shareButtonContainer, watchButtonContainerTemplate);
-
-    // Using custom observer because popstate does not fire.
-    const locationObserver = LocationChangeObserver(async location =>
+    
+    async function handleShortsContainerBecameDisplayed()
     {
-        const actionsBar = findCurrentActionsBar(location);
-        if(!actionsBar.querySelector(".userscript-watch-button")) insertWatchButtonIntoActionsBar(actionsBar);
-    });
-    locationObserver.observe();
+        const shareButtonContainer = await waitForShareButtonContainer();
+
+        const watchButtonContainerTemplate = await watchButtonContainerTemplatePromise;
+        insertWatchButton(shareButtonContainer, watchButtonContainerTemplate);
+    
+        locationObserver.observe();
+    }
+
+    function handleShortsContainerBecameHidden()
+    {
+        locationObserver.disconnect();
+    }
 
 
     async function waitForShareButtonContainer()
@@ -141,22 +173,33 @@
     function LocationChangeObserver(listener)
     {
         let previousUrl = null;
+        let intervalId = null;
 
         function observe()
         {
             previousUrl = window.location.href;
-            window.setInterval(() =>
-            {
-                const currentLocation = window.location;
-                const currentUrl = currentLocation.href;
-                if(previousUrl === currentUrl) return;
-
-                previousUrl = currentUrl;
-                listener(currentLocation);
-            }, 100);
+            intervalId = window.setInterval(handleInterval, 100);
         }
 
-        return { observe };
+        function disconnect()
+        {
+            if(intervalId != null) window.clearInterval(intervalId);
+        }
+
+        function handleInterval()
+        {
+            const currentLocation = window.location;
+            const currentUrl = currentLocation.href;
+            if(previousUrl === currentUrl) return;
+
+            previousUrl = currentUrl;
+            listener(currentLocation);
+        }
+
+        return {
+            observe,
+            disconnect,
+        };
     }
 
 
