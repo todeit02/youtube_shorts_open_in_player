@@ -28,7 +28,11 @@
         locationObserver = LocationChangeObserver(async location =>
         {
             const actionsBar = findCurrentActionsBar(location);
-            if(!actionsBar.querySelector(".userscript-watch-button")) insertWatchButtonIntoActionsBar(actionsBar);
+            if(!actionsBar.querySelector(".userscript-watch-button"))
+            {
+                const watchButtonUrl = createWatchUrlFromShortsUrl(location);
+                insertWatchButtonIntoActionsBar(actionsBar, watchButtonUrl);
+            }
         });
     
         let shortsContainerWasDisplayedBefore = false;
@@ -61,7 +65,8 @@
         const shareButtonContainer = await waitForShareButtonContainer();
 
         const watchButtonContainerTemplate = await watchButtonContainerTemplatePromise;
-        insertWatchButton(shareButtonContainer, watchButtonContainerTemplate);
+        const watchButtonUrl = createWatchUrlFromShortsUrl(location);
+        insertWatchButton(shareButtonContainer, watchButtonContainerTemplate, watchButtonUrl);
     
         locationObserver.observe();
     }
@@ -81,7 +86,7 @@
                 // Watching all these mutations is not optimal yet.
         
                 const addedNodes = mutations.flatMap(mutation => [...mutation.addedNodes]);
-                const shareButtonExists = addedNodes.some(node => node.closest("#share-button"));
+                const shareButtonExists = addedNodes.some(node => (node.nodeType === Node.ELEMENT_NODE) && node.closest("#share-button"));
                 if(!shareButtonExists) return;
         
                 domObserver.disconnect();
@@ -99,12 +104,12 @@
     }
 
 
-    async function insertWatchButtonIntoActionsBar(actionsBar)
+    async function insertWatchButtonIntoActionsBar(actionsBar, url)
     {
         const shareButtonContainer = actionsBar.querySelector("#share-button");
 
         const watchButtonContainerTemplate = await watchButtonContainerTemplatePromise;
-        insertWatchButton(shareButtonContainer, watchButtonContainerTemplate);
+        insertWatchButton(shareButtonContainer, watchButtonContainerTemplate, url);
     }
 
 
@@ -130,22 +135,15 @@
     }
 
 
-    function insertWatchButton(siblingShareButtonContainer, watchButtonContainerTemplate)
+    function insertWatchButton(siblingShareButtonContainer, watchButtonContainerTemplate, url)
     {
         const shareButtonRenderer = siblingShareButtonContainer.querySelector("ytd-button-renderer");
         const shareButton = siblingShareButtonContainer.querySelector("button");
 
         const watchButtonContainer = watchButtonContainerTemplate.content.cloneNode(true).firstElementChild;
-        const watchButton = watchButtonContainer.querySelector("button");
-        
-        watchButton.addEventListener("click", () =>
-        {
-            const videoId = window.location.pathname.split('/').at(-1);
-            const videoPlayerPageUrl = new URL("/watch", window.location.origin);
-            videoPlayerPageUrl.searchParams.set("v", videoId);
+        const watchButton = watchButtonContainer.querySelector("a");
 
-            window.open(videoPlayerPageUrl.href, "_blank");
-        });
+        watchButton.href = url.href;
         
         watchButtonContainer.style.paddingTop = window.getComputedStyle(shareButtonRenderer).paddingTop;
         watchButton.style.width = shareButton.scrollWidth + "px";
@@ -153,6 +151,21 @@
         watchButton.style.borderRadius = window.getComputedStyle(shareButton).borderRadius;
         
         siblingShareButtonContainer.insertAdjacentElement("afterend", watchButtonContainer);  
+    }
+
+
+    function createWatchUrlFromShortsUrl(shortsUrl)
+    {
+        const videoId = shortsUrl.pathname.split('/').at(-1);
+        return createWatchUrlFromVideoId(videoId);
+    }
+
+
+    function createWatchUrlFromVideoId(videoId)
+    {        
+        const watchPageUrl = new URL("/watch", window.location.origin);
+        watchPageUrl.searchParams.set("v", videoId);
+        return watchPageUrl;
     }
 
 

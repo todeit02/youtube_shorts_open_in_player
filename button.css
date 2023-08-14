@@ -1,4 +1,4 @@
-.userscript-watch-button button
+.userscript-watch-button a
 {
     background-color: var(--yt-spec-badge-chip-background);
     border: none;
@@ -8,13 +8,13 @@
     justify-content: center;
 }
 
-.userscript-watch-button button:hover
+.userscript-watch-button a:hover
 {
     background-color: var(--yt-spec-mono-tonal-hover);
     border-color: transparent;
 }
 
-.userscript-watch-button button svg
+.userscript-watch-button a svg
 {
     display: block;
     width: 50%;
