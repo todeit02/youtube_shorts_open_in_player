@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name                youtube-shorts-open-in-player
-// @version				0.1.0
+// @version				0.2.0
 // @namespace	        https://github.com/todeit02/youtube_shorts_open_in_player
 // @description	        Adds a "watch" button to YouTube shorts for opening them as a regular YouTube video.
 // @grant				GM.xmlHttpRequest
